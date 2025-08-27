@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة تنظيف ملفات JSON</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        .file-list-item {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl bg-white rounded-2xl shadow-lg p-8 relative">
+        <!-- زر تبديل اللغة -->
+        <div class="absolute top-4 left-4">
+            <button id="lang-toggle-btn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow hover:bg-gray-300 transition-colors duration-300">
+                English
+            </button>
+        </div>
+
+        <div class="text-center mb-8">
+            <h1 id="main-title" class="text-3xl font-bold text-gray-800">أداة تنظيف إجابات JSON</h1>
+            <p id="main-description" class="text-gray-600 mt-2">
+                قم برفع ملفات JSON لإزالة وسوم HTML من إجابات أسئلة النوع "string" تلقائيًا.
+            </p>
+        </div>
+
+        <!-- منطقة رفع الملفات -->
+        <div id="upload-area" class="border-4 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 transition-colors duration-300">
+            <input type="file" id="file-input" multiple accept=".json" class="hidden">
+            <div id="upload-prompt">
+                <svg class="mx-auto h-16 w-16 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <p class="mt-4 text-lg text-gray-600">
+                    <span id="upload-button-text" class="font-semibold text-blue-600">انقر للاختيار</span> <span id="upload-drag-text">أو قم بسحب وإفلات الملفات هنا</span>
+                </p>
+                <p id="upload-hint" class="text-sm text-gray-500 mt-1">يجب أن تكون الملفات بصيغة JSON</p>
+            </div>
+        </div>
+
+        <!-- منطقة عرض النتائج والأزرار -->
+        <div id="results-area" class="mt-8 hidden">
+            <h2 id="files-header" class="text-xl font-semibold text-gray-700 mb-4">الملفات المرفوعة:</h2>
+            <div id="file-list" class="space-y-2 max-h-60 overflow-y-auto pr-2"></div>
+            
+            <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                <button id="process-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0L8 5.45a1.5 1.5 0 01-2.12 2.12L3.45 8c-1.56.38-1.56 2.6 0 2.98L5.45 12a1.5 1.5 0 01-2.12 2.12L8 16.55c.38 1.56 2.6 1.56 2.98 0L12 14.55a1.5 1.5 0 012.12-2.12l2.43-2.43c1.56-.38 1.56-2.6 0-2.98L14.55 8a1.5 1.5 0 01-2.12-2.12L11.49 3.17zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="process-btn-text">معالجة الملفات</span>
+                </button>
+                <button id="download-btn" class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="download-btn-text">تحميل الكل (ZIP)</span>
+                </button>
+            </div>
+             <div id="processing-indicator" class="mt-4 text-center text-gray-600 hidden">
+                <p id="processing-indicator-text">جاري المعالجة... يرجى الانتظار.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- تعريف العناصر ---
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const resultsArea = document.getElementById('results-area');
+        const fileList = document.getElementById('file-list');
+        const processBtn = document.getElementById('process-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const processingIndicator = document.getElementById('processing-indicator');
+        const langToggleBtn = document.getElementById('lang-toggle-btn');
+        
+        let uploadedFiles = [];
+        let cleanedFilesZip = new JSZip();
+        let currentLang = localStorage.getItem('jsonCleanerLang') || 'ar';
+
+        // --- قاموس الترجمة ---
+        const translations = {
+            ar: {
+                title: "أداة تنظيف إجابات JSON",
+                description: "قم برفع ملفات JSON لإزالة وسوم HTML من إجابات أسئلة النوع \"string\" تلقائيًا.",
+                filesHeader: "الملفات المرفوعة:",
+                uploadButton: "انقر للاختيار",
+                uploadDrag: "أو قم بسحب وإفلات الملفات هنا",
+                uploadHint: "يجب أن تكون الملفات بصيغة JSON",
+                processButton: "معالجة الملفات",
+                downloadButton: "تحميل الكل (ZIP)",
+                processingStatus: "جاري المعالجة... يرجى الانتظار.",
+                readyStatus: "جاهز للمعالجة",
+                processingFileStatus: "جاري المعالجة...",
+                cleanedStatus: "تم التنظيف بنجاح",
+                noChangesStatus: "لم يتم العثور على تغييرات",
+                errorStatus: "خطأ",
+                fileReadError: "خطأ في قراءة الملف",
+                invalidJsonError: "ملف JSON غير صالح",
+                processingComplete: "اكتملت المعالجة! يمكنك الآن تحميل الملفات.",
+                processingError: "حدث خطأ أثناء المعالجة. يرجى مراجعة حالة الملفات.",
+                langToggleButton: "English",
+                alertOnlyJson: "الرجاء اختيار ملفات بصيغة JSON فقط."
+            },
+            en: {
+                title: "JSON Answer Cleaner Tool",
+                description: "Upload JSON files to automatically remove HTML tags from \"string\" type question answers.",
+                filesHeader: "Uploaded Files:",
+                uploadButton: "Click to select",
+                uploadDrag: "or drag and drop files here",
+                uploadHint: "Files must be in JSON format",
+                processButton: "Process Files",
+                downloadButton: "Download All (ZIP)",
+                processingStatus: "Processing... Please wait.",
+                readyStatus: "Ready to process",
+                processingFileStatus: "Processing...",
+                cleanedStatus: "Cleaned successfully",
+                noChangesStatus: "No changes found",
+                errorStatus: "Error",
+                fileReadError: "File read error",
+                invalidJsonError: "Invalid JSON file",
+                processingComplete: "Processing complete! You can now download the files.",
+                processingError: "An error occurred during processing. Please check the file statuses.",
+                langToggleButton: "العربية",
+                alertOnlyJson: "Please select JSON files only."
+            }
+        };
+
+        // --- وظائف اللغة ---
+        function updateLanguageUI() {
+            const lang = translations[currentLang];
+            document.documentElement.lang = currentLang;
+            document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+
+            document.getElementById('main-title').textContent = lang.title;
+            document.getElementById('main-description').textContent = lang.description;
+            document.getElementById('files-header').textContent = lang.filesHeader;
+            document.getElementById('upload-button-text').textContent = lang.uploadButton;
+            document.getElementById('upload-drag-text').textContent = lang.uploadDrag;
+            document.getElementById('upload-hint').textContent = lang.uploadHint;
+            document.getElementById('process-btn-text').textContent = lang.processButton;
+            document.getElementById('download-btn-text').textContent = lang.downloadButton;
+            document.getElementById('processing-indicator-text').textContent = lang.processingStatus;
+            langToggleBtn.textContent = lang.langToggleButton;
+            
+            // تحديث حالة الملفات الموجودة
+            displayFileList();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ar' ? 'en' : 'ar';
+            localStorage.setItem('jsonCleanerLang', currentLang);
+            updateLanguageUI();
+        }
+
+        langToggleBtn.addEventListener('click', toggleLanguage);
+        
+        // --- وظائف السحب والإفلات ---
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('border-blue-500', 'bg-blue-50');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+            handleFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        // --- التعامل مع الملفات المرفوعة ---
+        function handleFiles(files) {
+            uploadedFiles = Array.from(files).filter(file => file.type === 'application/json');
+            if (uploadedFiles.length > 0) {
+                resultsArea.classList.remove('hidden');
+                uploadPrompt.classList.add('hidden');
+                displayFileList();
+                processBtn.disabled = false;
+                downloadBtn.disabled = true;
+            } else {
+                alert(translations[currentLang].alertOnlyJson);
+            }
+        }
+
+        // --- عرض قائمة الملفات ---
+        function displayFileList() {
+            fileList.innerHTML = '';
+            uploadedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.id = `file-item-${index}`;
+                fileItem.className = 'file-list-item flex items-center justify-between bg-gray-100 p-3 rounded-lg';
+                const statusSpan = document.createElement('span');
+                statusSpan.id = `status-${index}`;
+                statusSpan.className = 'text-sm font-semibold text-gray-500';
+                statusSpan.textContent = translations[currentLang].readyStatus;
+                
+                const fileNameSpan = document.createElement('span');
+                fileNameSpan.className = 'text-gray-800 truncate';
+                fileNameSpan.textContent = file.name;
+
+                fileItem.appendChild(fileNameSpan);
+                fileItem.appendChild(statusSpan);
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        // --- وظيفة تنظيف الإجابات ---
+        function cleanJson(jsonContent) {
+            try {
+                const data = JSON.parse(jsonContent);
+                let changesMade = false;
+                if (data.parts && Array.isArray(data.parts)) {
+                    data.parts.forEach(part => {
+                        if (part.type === 'string' && part.answer && Array.isArray(part.answer)) {
+                            const cleanedAnswers = part.answer.map(htmlAnswer => {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(htmlAnswer, 'text/html');
+                                return doc.body.textContent || "";
+                            });
+                            part.answer = cleanedAnswers;
+                            changesMade = true;
+                        }
+                    });
+                }
+                return { cleanedData: JSON.stringify(data, null, 2), changesMade };
+            } catch (error) {
+                console.error("Error parsing or cleaning JSON:", error);
+                return { error: translations[currentLang].invalidJsonError };
+            }
+        }
+
+        // --- معالجة الملفات ---
+        processBtn.addEventListener('click', async () => {
+            processBtn.disabled = true;
+            downloadBtn.disabled = true;
+            processingIndicator.classList.remove('hidden');
+            document.getElementById('processing-indicator-text').textContent = translations[currentLang].processingStatus;
+            cleanedFilesZip = new JSZip();
+            
+            const processingPromises = uploadedFiles.map((file, index) => {
+                const statusEl = document.getElementById(`status-${index}`);
+                statusEl.textContent = translations[currentLang].processingFileStatus;
+                statusEl.className = 'text-sm font-semibold text-yellow-500';
+
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const { cleanedData, changesMade, error } = cleanJson(e.target.result);
+                        if (error) {
+                            statusEl.textContent = `${translations[currentLang].errorStatus}: ${error}`;
+                            statusEl.className = 'text-sm font-semibold text-red-500';
+                            reject(new Error(error));
+                        } else {
+                            cleanedFilesZip.file(file.name, cleanedData);
+                            statusEl.textContent = changesMade ? translations[currentLang].cleanedStatus : translations[currentLang].noChangesStatus;
+                            statusEl.className = `text-sm font-semibold ${changesMade ? 'text-green-500' : 'text-blue-500'}`;
+                            resolve();
+                        }
+                    };
+                    reader.onerror = () => {
+                        statusEl.textContent = translations[currentLang].fileReadError;
+                        statusEl.className = 'text-sm font-semibold text-red-500';
+                        reject(new Error('File read error'));
+                    };
+                    reader.readAsText(file);
+                });
+            });
+
+            try {
+                await Promise.all(processingPromises);
+                downloadBtn.disabled = false;
+                document.getElementById('processing-indicator-text').textContent = translations[currentLang].processingComplete;
+            } catch (error) {
+                console.error("An error occurred during processing:", error);
+                document.getElementById('processing-indicator-text').textContent = translations[currentLang].processingError;
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+
+        // --- تحميل الملفات ---
+        downloadBtn.addEventListener('click', () => {
+            cleanedFilesZip.generateAsync({ type: "blob" })
+                .then(function(content) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = "cleaned_json_files.zip";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                });
+        });
+
+        // --- تشغيل اللغة عند بدء التشغيل ---
+        updateLanguageUI();
+    </script>
+
+</body>
+</html>
